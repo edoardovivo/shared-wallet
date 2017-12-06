@@ -2,34 +2,104 @@ pragma solidity ^0.4.0;
 contract sharedwallet {
 	uint amount;
 	address owner;
+
+	event Deposit(address _sender, uint amountSent);
+	event Withdrawal(address _withdrawer, address _recipient, uint amountWithdrew);
 	
-	struct User {
-
-		address add;
-		bool canSpend;
-		bool canPut;
+	struct UserPermission {
+	    bool exists;
+		bool canSend; //can send monet TO the wallet
+		bool canWithdraw; // can withdraw money from the wallet
 	}
 
-	User[] users;
+	mapping (address => UserPermission) users;
 
-	function addUser(address add, bool canSpend, bool canPut) private {
-		User newUser;
-		newUser.add = add;
-		newUser.canSpend = canSpend;
-		newUser.canPut = canPut;
-		users.push(newUser);
-	}
 
 	function sharedwallet(uint initial_amount) public {
 
 		owner = msg.sender;
 		addUser(owner, true, true);	
+
+	}
+
+
+	function addUser(address add, bool canSend, bool canWithdraw) public {
+		// only the owner can add users
+		if (msg.sender == owner) {
+			UserPermission newUserPermission;
+			newUserPermission.exists = true;
+			newUserPermission.canSend = canSend;
+			newUserPermission.canWithdraw = canWithdraw;
+			if (users[add].exists == true) {
+			    revert();
+			}
+			else {
+		        users[add] = newUserPermission;    
+			}
+				
+		}
+		else {
+			revert();
+		}
 		
 	}
 
-	function sendEthToWallet(uint amount) public {
+
+
+	function() {
+
+		if (users[msg.sender].exists == true && users[msg.sender].canSend == true ) {
+			Deposit(msg.sender, msg.value);
+		}
+		else {
+			revert();
+		}
+	}
+
+
+	function WithdrawFunds(uint amountToWithdraw, address recipient) returns (uint) {
+
+		if (users[msg.sender].exists == true && users[msg.sender].canWithdraw == true) {
+			if (this.balance >= amountToWithdraw) {
+				if (!recipient.send(amountToWithdraw)) {
+					revert();
+				}
+				Withdrawal(msg.sender, recipient, amountToWithdraw);
+				
+			}
+			
+		}
+		return this.balance;
 
 	}
+
+	function setUserPermissions(address add, bool canSend, bool canWithdraw) {
+		// Only the owner can change the permissions
+		if (msg.sender == owner) {
+			if (users[add].exists == true) {
+				users[add].canSend = canSend;
+				users[add].canWithdraw = canWithdraw;
+			}
+			else {
+				revert();
+			}
+		}
+	}
+
+	function getUserPermissions(address add) constant returns (bool, bool) {
+		return (users[add].canSend, users[add].canWithdraw);
+	}
+	
+	function getAmount() constant returns (uint) {
+	    return this.balance;
+	}
+
+	function killWallet() {
+		if (msg.sender == owner) {
+			suicide(owner);
+		}
+	}
+
 
 
 
