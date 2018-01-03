@@ -8,17 +8,18 @@ contract sharedwallet {
 	
 	struct UserPermission {
 	    bool exists;
-		bool canSend; //can send monet TO the wallet
+		bool canSend; //can send money TO the wallet
 		bool canWithdraw; // can withdraw money from the wallet
 	}
 
 	mapping (address => UserPermission) users;
 
 
-	function sharedwallet(uint initial_amount) public {
+	function sharedwallet() public payable {
 
 		owner = msg.sender;
 		addUser(owner, true, true);	
+		Deposit(msg.sender, msg.value);
 
 	}
 
@@ -46,9 +47,9 @@ contract sharedwallet {
 
 
 
-	function() {
-
-		if (users[msg.sender].exists == true && users[msg.sender].canSend == true ) {
+	function() payable {
+        UserPermission permissions = users[msg.sender];
+		if (permissions.canSend == true ) {
 			Deposit(msg.sender, msg.value);
 		}
 		else {
@@ -59,11 +60,9 @@ contract sharedwallet {
 
 	function WithdrawFunds(uint amountToWithdraw, address recipient) returns (uint) {
 
-		if (users[msg.sender].exists == true && users[msg.sender].canWithdraw == true) {
+		if (users[msg.sender].canWithdraw == true) {
 			if (this.balance >= amountToWithdraw) {
-				if (!recipient.send(amountToWithdraw)) {
-					revert();
-				}
+				recipient.transfer(amountToWithdraw);
 				Withdrawal(msg.sender, recipient, amountToWithdraw);
 				
 			}
